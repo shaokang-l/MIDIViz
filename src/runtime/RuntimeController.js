@@ -136,9 +136,12 @@ class RuntimeController {
         const speedScale = motionNode ? motionNode.params.speedScale : primitiveNode.params.speedScale;
         const listenToAll = primitiveNode.params.listenToAll || false;
         const colorGenerator = this.createColorGenerator(primitiveNode);
+        const maxItems = primitiveNode.params.maxItems || this.getDefaultMaxItems(primitiveType);
         const configureCollection = (collection) => {
             if (groupTrackIndices && collection.setTrackIndices)
                 collection.setTrackIndices(groupTrackIndices);
+            if (collection.setMaxItems)
+                collection.setMaxItems(maxItems);
             return collection;
         };
 
@@ -150,6 +153,16 @@ class RuntimeController {
             default:
                 return configureCollection(new CollectionType(trackIndex, speedScale || 5e-3, listenToAll, colorGenerator));
         }
+    }
+
+    getDefaultMaxItems(primitiveType) {
+        if (primitiveType === "ParticleSet" || primitiveType === "CircularParticleSet")
+            return 2000;
+        if (primitiveType === "RippleSet")
+            return 600;
+        if (primitiveType === "LineSet")
+            return 800;
+        return 1200;
     }
 
     createColorGenerator(primitiveNode) {
@@ -250,6 +263,7 @@ class RuntimeController {
                 primitiveType,
                 speedScale: 5e-2,
                 listenToAll: false,
+                maxItems: this.getDefaultMaxItems(primitiveType),
                 ...params,
             },
         });
@@ -280,6 +294,7 @@ class RuntimeController {
                 primitiveType,
                 speedScale: 5e-2,
                 listenToAll: false,
+                maxItems: this.getDefaultMaxItems(primitiveType),
                 ...params,
             },
         });

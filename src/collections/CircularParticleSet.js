@@ -54,7 +54,7 @@ class CircularParticleSet extends Collection {
     }
 
     add(deg, size = 20, color = [255, 255, 255]) {
-        this.collection.push(new CircularParticle(this.radius, deg, this.speed_scale, this.trackIdx, size, color));
+        this.pushPrimitive(new CircularParticle(this.radius, deg, this.speed_scale, this.trackIdx, size, color));
     }
 
 }

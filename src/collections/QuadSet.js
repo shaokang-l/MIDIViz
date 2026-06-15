@@ -21,7 +21,7 @@ class QuadSet extends Collection {
      * @description add a quad to the collection given position, initial direction, size and color
      */
     add(position, acceleration = new vec2(0, -1), sizeX = 12.5, sizeY = 10, color = this.colorGenerator(detail)) {
-        this.collection.push(new Quad(position, new vec2(0, 0), acceleration.scalar_mul(this.speed_scale), this.trackIdx, sizeX, sizeY, color));
+        this.pushPrimitive(new Quad(position, new vec2(0, 0), acceleration.scalar_mul(this.speed_scale), this.trackIdx, sizeX, sizeY, color));
     }
 
 

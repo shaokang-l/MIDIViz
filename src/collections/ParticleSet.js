@@ -14,7 +14,7 @@ class ParticleSet extends Collection {
     }
 
     add(position, acceleration = new vec2(0, 1), size = 10, color = [0, 0, 0]) {
-        this.collection.push(new Particle(position, new vec2(0, 0), acceleration.scalar_mul(this.speed_scale), size, this.trackIdx, color));
+        this.pushPrimitive(new Particle(position, new vec2(0, 0), acceleration.scalar_mul(this.speed_scale), size, this.trackIdx, color));
     }
 
     /**

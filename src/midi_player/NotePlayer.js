@@ -259,17 +259,13 @@ class NotePlayer {
         const now = context.currentTime;
         const reverb = new Reverb(context);
         const playbackToken = this.playbackToken;
+        const instrumentCache = new Map();
         this.currentContext = context;
 
         for (let i = 0; i < this.tracks.length; i++) {
-            const instr = await new Soundfont(context, { instrument: this.trackSettings[i].instrument }).load;
-            if (playbackToken !== this.playbackToken)
-                return;
-
-            instr.output.addEffect("reverb", reverb, this.trackSettings[i].reverb);
-
+            const trackSetting = this.trackSettings[i];
+            const scheduledNotes = [];
             this.tracks[i].notes.forEach(note => {
-                const trackSetting = this.trackSettings[i];
                 const noteStart = note.time + (trackSetting.delay || 0);
                 const elapsedNoteTime = Math.max(0, timeOffset - noteStart);
                 const duration = note.duration + trackSetting.sustain - elapsedNoteTime;
@@ -279,6 +275,25 @@ class NotePlayer {
                 const scheduledTime = Math.max(0, noteStart - timeOffset);
                 const velocity = Math.max(0, Math.min(127, note.velocity * (trackSetting.velocityScale || 1)));
                 var playNote = note.midi + trackSetting.shift;
+                scheduledNotes.push({ note, duration, scheduledTime, velocity, playNote });
+            });
+
+            if (scheduledNotes.length === 0)
+                continue;
+
+            const instrumentKey = `${trackSetting.instrument}|${trackSetting.reverb}`;
+            if (!instrumentCache.has(instrumentKey)) {
+                instrumentCache.set(instrumentKey, new Soundfont(context, { instrument: trackSetting.instrument }).load.then(instr => {
+                    instr.output.addEffect("reverb", reverb, trackSetting.reverb);
+                    return instr;
+                }));
+            }
+
+            const instr = await instrumentCache.get(instrumentKey);
+            if (playbackToken !== this.playbackToken)
+                return;
+
+            scheduledNotes.forEach(({ note, duration, scheduledTime, velocity, playNote }) => {
                 instr.start({
                     note: playNote, velocity: velocity, duration: duration, time: scheduledTime + now,
                     onStart: () => {

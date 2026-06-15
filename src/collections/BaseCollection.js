@@ -24,6 +24,8 @@ class Collection {
     */
     trackIdx;
     trackIndices;
+    trackIndexSet;
+    maxItems;
 
     /** 
     @description The initial acceleration of the collection is multiplied by this amount
@@ -42,10 +44,12 @@ class Collection {
     setTrackIdx(trackIdx) {
         this.trackIdx = trackIdx;
         this.trackIndices = null;
+        this.trackIndexSet = null;
     }
 
     setTrackIndices(trackIndices) {
         this.trackIndices = Array.isArray(trackIndices) ? trackIndices : null;
+        this.trackIndexSet = this.trackIndices ? new Set(this.trackIndices) : null;
     }
 
     setSpeedScale(speed_scale) {
@@ -55,6 +59,12 @@ class Collection {
     setListenToAll(listenToAll) {
         this.listenToAll = listenToAll;
     };
+
+    setMaxItems(maxItems) {
+        const value = Number(maxItems);
+        this.maxItems = Number.isFinite(value) && value > 0 ? Math.floor(value) : Infinity;
+        this.pruneOverflow();
+    }
 
     /**
      * @param {number} trackIdx - The track this collection listen to 
@@ -83,13 +93,29 @@ class Collection {
         this.notePlayedListener = null;
         this.noteEndedListener = null;
         this.trackIndices = null;
+        this.trackIndexSet = null;
+        this.maxItems = Infinity;
     }
 
     /**
      * @param {Primitive} item - Adding a primitive to the collection
      */
     add(item) {
+        this.pushPrimitive(item);
+    }
+
+    pushPrimitive(item) {
         this.collection.push(item);
+        this.pruneOverflow();
+    }
+
+    pruneOverflow() {
+        if (!Number.isFinite(this.maxItems))
+            return;
+
+        const overflow = this.collection.length - this.maxItems;
+        if (overflow > 0)
+            this.collection.splice(0, overflow);
     }
 
     /**
@@ -156,11 +182,10 @@ class Collection {
      * This function is overridable, overriding in derived class may gives desired result.
      */
     checkBoundary(p5) {
-        this.collection.forEach(item => {
-            if (item.checkBoundary(p5)) {
-                this.collection.splice(this.collection.indexOf(item), 1);
-            }
-        });
+        for (let i = this.collection.length - 1; i >= 0; i--) {
+            if (this.collection[i].checkBoundary(p5))
+                this.collection.splice(i, 1);
+        }
     }
 
     /**
@@ -217,8 +242,8 @@ class Collection {
     shouldHandleTrack(trackNum) {
         if (this.listenToAll)
             return true;
-        if (Array.isArray(this.trackIndices))
-            return this.trackIndices.includes(trackNum);
+        if (this.trackIndexSet)
+            return this.trackIndexSet.has(trackNum);
         return trackNum === this.trackIdx;
     }
 

@@ -18,7 +18,7 @@ class RippleSet extends Collection {
      * @description Add a ripple to the set, sizeAccel specifies how fast the ripple grows.
      */
     add(position, acceleration = new vec2(0, 1), sizeAccel = 0.1, size = 10, color = this.colorGenerator(detail)) {
-        this.collection.push(new Ripple(position, new vec2(0, 0), acceleration.scalar_mul(this.speed_scale), sizeAccel, size, this.trackIdx, color));
+        this.pushPrimitive(new Ripple(position, new vec2(0, 0), acceleration.scalar_mul(this.speed_scale), sizeAccel, size, this.trackIdx, color));
     };
 
      /**

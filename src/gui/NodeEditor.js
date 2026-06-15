@@ -320,7 +320,10 @@ class NodeEditor {
         const typeSelect = this.createSelect(Object.keys(PRIMITIVE_TYPES), node.params.primitiveType || node.label, (primitiveType) => {
             this.graph.updateNode(node.id, {
                 label: primitiveType,
-                params: { primitiveType },
+                params: {
+                    primitiveType,
+                    maxItems: node.params.maxItems || this.getDefaultMaxItems(primitiveType),
+                },
             });
             this.applyAndRender();
         });
@@ -333,6 +336,11 @@ class NodeEditor {
             this.graph.updateNode(node.id, { params: { speedScale: Number(speedInput.value) } });
             this.applyAndRender();
         });
+
+        const maxItemsInput = this.createNumberInput(node.params.maxItems || this.getDefaultMaxItems(node.params.primitiveType || node.label), 100, (value) => {
+            this.graph.updateNode(node.id, { params: { maxItems: Math.max(1, Math.floor(value)) } });
+            this.applyAndRender();
+        }, { min: 1 });
 
         const listenInput = document.createElement("input");
         listenInput.type = "checkbox";
@@ -350,6 +358,7 @@ class NodeEditor {
         card.appendChild(this.createField("Source", sourceSelect));
         card.appendChild(this.createField("Type", typeSelect));
         card.appendChild(this.createField("Speed", speedInput));
+        card.appendChild(this.createField("Max Items", maxItemsInput));
         card.appendChild(this.createField("Listen All", listenInput));
         card.appendChild(this.createField("Color", colorInput));
         card.appendChild(this.createButton("Remove", () => {
@@ -598,6 +607,7 @@ class NodeEditor {
                 primitiveType,
                 speedScale: 5e-2,
                 listenToAll: false,
+                maxItems: this.getDefaultMaxItems(primitiveType),
                 color: [69, 202, 255],
             },
         });
@@ -631,6 +641,18 @@ class NodeEditor {
 
         this.setStatus("Assigned distinct colors by track.");
         this.applyAndRender();
+    }
+
+    getDefaultMaxItems(primitiveType) {
+        if (this.controller && this.controller.getDefaultMaxItems)
+            return this.controller.getDefaultMaxItems(primitiveType);
+        if (primitiveType === "ParticleSet" || primitiveType === "CircularParticleSet")
+            return 2000;
+        if (primitiveType === "RippleSet")
+            return 600;
+        if (primitiveType === "LineSet")
+            return 800;
+        return 1200;
     }
 
     getPrimitiveNodesForTrack(trackNode) {

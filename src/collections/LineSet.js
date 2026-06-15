@@ -12,7 +12,7 @@ class LineSet extends Collection {
     }
 
     add(p1, p2, velocity = vec2.zeros(), acceleration = vec2.zeros(), color = this.colorGenerator(detail)) {
-        this.collection.push(new Line(p1, p2, velocity, acceleration, this.trackIdx, color));
+        this.pushPrimitive(new Line(p1, p2, velocity, acceleration, this.trackIdx, color));
     };
 
     /** 
