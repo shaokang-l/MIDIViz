@@ -1,199 +1,153 @@
 # MIDIViz
 
-This library is a web-based MIDI player & visualizer (with particles). It includes a MIDI parser over `tone.js` library,  a wrapper layer over `smplr` library for MIDI player and `collection` classes for visualization, providing a quick MIDI-to-visualization control.
+MIDIViz is a browser-based MIDI visualizer and lightweight runtime patching environment built with p5.js, Tone.js MIDI parsing, and smplr soundfonts.
 
-The overall library design follows the observer design pattern. The note player emits note event and each collection listens to the note event and act correspondingly.
+The project started as an event-driven MIDI visualization library: `NotePlayer` emits note events, and visualization collections listen to those events to create primitives such as quads, particles, ripples, lines, circular particles, and piano-roll highlights. It now also includes a node editor for mapping MIDI tracks to instruments and visual primitives at runtime.
 
+## Current Status
 
+MIDIViz is becoming a small MIDI-driven visual instrument rather than just a MIDI player. The most interesting part is the runtime graph: tracks, instruments, primitives, piano-roll settings, colors, and track groups can be edited while the sketch is running.
 
-![image-20231107021554556](https://s2.loli.net/2023/11/07/ROFeCU3uWi9cLY5.png)
+Core features:
 
-### Examples:
+- MIDI loading and playback in the browser.
+- Runtime node editor for track, instrument, primitive, color, piano-roll, and track-group mapping.
+- Draggable nodes with preset import/export.
+- Track groups, so one primitive can listen to multiple tracks.
+- Piano roll with per-track highlights.
+- Playback controls: play, stop, restart, seek, and record canvas to WebM.
+- Primitive performance controls, including per-node `Max Items` caps.
+- Local MIDI file loading with empty-track filtering and better large-file error messages.
 
-```js
-import NotePlayer from "../src/NotePlayer.js";
+## Quick Start
 
-//this example plays a midi song with default settings (piano for all tracks)
-new p5(function(p5){
+Serve the repo with any static file server, then open:
 
-    p5.setup = async function() {
-        const url = "../assets/dailyLife.mid"
-        const player = new NotePlayer();
-        await player.load(url);
-        player.defaultPlay();
-    }
-
-});
+```text
+src/midiviz_quick/multi_track.html
 ```
 
-```js
-new p5(function(p5){
-	const roll = new PianoRollWithPrimitives(p5, ParticleSet);
-    const player = new NotePlayer();
+For example:
 
-    //set up the play settings and particle speed
-    p5.setup = async function () {
-        p5.createCanvas(p5.windowWidth, p5.windowHeight);
-        p5.background(255);
-        const url = "../../assets/uneBarque.mid"
-        await player.load(url);
-        player.setAllSustain(0.7);
-        await player.play();
-        roll.setSpeedScale(5e-2);
-    }
-
-    //called on each frame, the draw call loop
-    p5.draw = function () {
-        roll.step(p5);
-    }
-});
+```sh
+python3 -m http.server 8000
 ```
 
+Then visit:
 
-
-### Setup
-
-* Usage from the browser, all of the dependencies are either in ES6 module or vanilla js. Migration to package manager is on the TODO List.
-
-```html
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>playMusic</title>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.7.0/p5.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.7.0/addons/p5.sound.min.js"></script>
-  <script src="https://unpkg.com/@tonejs/midi"></script>
-
-   <!-- Your sketch is here -->
-  <script type="module" src="./piano_particle.js"></script>
-</head>
+```text
+http://localhost:8000/src/midiviz_quick/multi_track.html
 ```
 
+The default node-editor example loads:
 
+```text
+assets/alleycat.mid
+```
 
-### Usage
+Make sure `alleycat.mid` exists at that path before hosting or opening the example. You can also use the `Load MIDI` button in the UI to load a local `.mid` file.
 
-#### Load & Play
+## GitHub Pages
 
-* Load and play from MIDI
+This project can be hosted directly on GitHub Pages because it is static HTML and browser ES modules.
+
+In your repository settings:
+
+- Go to `Settings` -> `Pages`.
+- Choose `Deploy from a branch`.
+- Select your branch, usually `main`.
+- Select `/root` as the folder.
+
+The page URL will look like:
+
+```text
+https://<username>.github.io/<repo>/src/midiviz_quick/multi_track.html
+```
+
+## Node Editor Workflow
+
+The main demo is `src/midiviz_quick/node_editor.js`, loaded by `multi_track.html`.
+
+Useful controls:
+
+- `Load MIDI`: load a local MIDI file.
+- `Add Track Group`: create a group node that can combine multiple tracks.
+- `Colorize Tracks`: assign distinct colors per track.
+- `Export Preset` / `Import Preset`: save and restore the graph as JSON.
+- `Max Items`: cap active primitives for performance.
+- `Record`: record the canvas to a `.webm` file when supported by the browser.
+
+Typical workflow:
+
+1. Load a MIDI file.
+2. Use track nodes to select instruments and add primitives.
+3. Use track groups when one visual primitive should react to multiple tracks.
+4. Adjust color, speed, and max item counts.
+5. Export a preset when the mapping feels good.
+
+## Library Usage
+
+Minimal MIDI playback:
 
 ```js
-import NotePlayer from "../src/NotePlayer.js";   
+import NotePlayer from "../midi_player/NotePlayer.js";
 
 const player = new NotePlayer();
-await player.load(url);
-player.defaultPlay();
-//by default, all the notes will be played with Piano
+await player.load("../../assets/alleycat.mid");
+await player.play();
 ```
 
-
-
-#### Play Settings
-
-* Shift overall note pitch
+Minimal p5 visualization:
 
 ```js
-//shift the first track with 1 octave above
-player.shiftNotes(12,1);
+import PianoRollWithPrimitives from "../collections/PianoRollWithPrimitives.js";
+import NotePlayer from "../midi_player/NotePlayer.js";
+import RuntimeController from "../runtime/RuntimeController.js";
+
+new p5(function (p5) {
+    const viz = new PianoRollWithPrimitives(p5, null, true);
+    const player = new NotePlayer();
+    let controller;
+
+    p5.setup = async function () {
+        p5.createCanvas(p5.windowWidth, p5.windowHeight);
+        await player.load("../../assets/alleycat.mid");
+
+        controller = new RuntimeController({ player, viz });
+        controller.createGraphFromPlayer({ defaultPrimitive: "QuadSet" });
+        controller.applyGraph();
+    };
+
+    p5.draw = function () {
+        if (controller)
+            viz.step(p5);
+    };
+});
 ```
 
-* Change instrument
+## Architecture
 
-```js
-player.setInstrument("piano",0);
-//all available instruments are listed in Instruments.js
-```
+Important pieces:
 
-* Change reverb
+- `src/midi_player/NotePlayer.js`: loads MIDI, resolves instruments, schedules playback, and emits note events.
+- `src/midi_player/FileHandler.js`: parses MIDI files and converts tracks to MIDIViz note data.
+- `src/collections/`: visualization collections that react to note events.
+- `src/primitives/`: drawable primitive objects.
+- `src/runtime/PatchGraph.js`: JSON-serializable graph model.
+- `src/runtime/RuntimeController.js`: applies graph settings to audio playback and visualization.
+- `src/gui/NodeEditor.js`: runtime node editor UI.
 
-```js
-player.setReverb(.3);
-```
+## Performance Notes
 
+Dense MIDI files can create many visual objects very quickly. MIDIViz includes a few guardrails:
 
+- Collections support `maxItems` and prune older primitives.
+- Boundary checks use reverse traversal to avoid expensive `indexOf` scans.
+- Playback reuses identical soundfont instances within a playback run.
+- Empty MIDI tracks are filtered from the default graph.
 
-#### Custom Event (Refactor required)
+For large MIDI files, it still helps to export a clean MIDI from your DAW: remove unused tracks, heavy controller automation, lyrics, and markers if they are not needed for visualization.
 
-* Custom event with `onStart()` and `onEnded()` from `smplr` library
+## Project Direction
 
-```js
-piano.loaded().then(() => {
-                for(let i=0;i<this.tracks.length;i++){
-                    this.tracks[i].notes.forEach(note => {
-                        piano.start({ note: note.midi+this.trackSettings[i].shift, velocity: note.velocity, duration: note.duration, time: note.time + now, onStart: () => {
-                            var e = new CustomEvent("notePlayed",{bubbles: true, detail:{pitch:note.midi, trackNum:i }});
-                            document.dispatchEvent(e);
-                          }});
-                    });
-                }
-            });
-```
-
-
-
-#### Adding a visualization collection
-
-```js
-const viz = new PianoRollWithPrimitives(p5, ParticleSet);
-
-//set global visualization unit moving speed
-//speed scale (use whole number instead)
-viz.setSpeedScale(5e-2);
-
-//add primitives, and they listen to different tracks
-viz.addCollection(new ParticleSet(0, 5e-2, false, (detail) => { return [69, 202, 255] }));
-```
-
-#### Override visualization pattern
-
-```js
-viz.setOnNotePlayed(0,(detail)=>{
-
-})
-```
-
-
-
-### Data Structures
-
-* tracks
-
-  * Array of track information, each track is as below
-
-    `{instrument: "name of instrument", notes = []}`
-
-  * Each note is a JSON object with below entries
-
-    ` {midi: 0-127, velocity: 0-127, time: the time the note start to play in second, duration: note duration in second, noteName: (e.g. C4)}`
-
-* trackSettings
-
-  * Array of tracks’ play settings
-
-    * Each element is as below
-
-      ` instrument:, reverb: time in second, minPitch: 0-127, maxPitch:0-127`
-
-  * By default, the instrument will be set to the one specified in the MIDI file, if the specified one is not available in the sound font, the track’s instrument will be set to piano.
-  
-* Collection
-
-  * A set of primitives of the same type
-  * Each collection has below properties:
-    * `collection`: array of primitives
-    * `onNotePlayed`: callback when a note is being played
-    * `onNoteEnded`: callback when a note ended
-    * `listenToAll`: if the collection listens to all tracks’ event
-    * `speed_scale`: speed factor changes the initial acceleration
-    * `colorGenerator`: default color pattern for the default callback
-  
-
-
-
-### Goals
-
-* A easy to use Load and Play MIDI player
-* A visualizer with customizable settings and different looks
-* Corresponding interface with `smplr` library
-
-#### 
+MIDIViz is most compelling as a MIDI-driven visual instrument. Good next features would be pattern presets, beat-synced motion, velocity-to-color/size mappings, drum-specific mapping, named scene presets, and a more direct cable-style node connection UI.

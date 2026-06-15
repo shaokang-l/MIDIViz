@@ -17,7 +17,7 @@ new p5(function (p5) {
     p5.setup = async function () {
         canvasElement = p5.createCanvas(p5.windowWidth, p5.windowHeight).elt;
 
-        const url = "../../assets/itohakanashi.mid";
+        const url = "../../assets/alleycat.mid";
         await player.load(url);
         player.setAllSustain(0.6);
         player.setAllReverb(0.5);
