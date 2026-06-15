@@ -103,7 +103,7 @@ class PatchGraph {
                     primitiveType: defaultPrimitive,
                     speedScale: 5e-2,
                     listenToAll: false,
-                    maxItems: 1200,
+                    maxItems: 4000,
                     color: defaultColor,
                 },
             });

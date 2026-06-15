@@ -63,7 +63,7 @@ class Collection {
     setMaxItems(maxItems) {
         const value = Number(maxItems);
         this.maxItems = Number.isFinite(value) && value > 0 ? Math.floor(value) : Infinity;
-        this.pruneOverflow();
+        this.pruneOverflow(true);
     }
 
     /**
@@ -106,11 +106,15 @@ class Collection {
 
     pushPrimitive(item) {
         this.collection.push(item);
-        this.pruneOverflow();
+        this.pruneOverflow(false);
     }
 
-    pruneOverflow() {
+    pruneOverflow(force = false) {
         if (!Number.isFinite(this.maxItems))
+            return;
+
+        const pruneBatch = Math.max(32, Math.floor(this.maxItems * 0.1));
+        if (!force && this.collection.length <= this.maxItems + pruneBatch)
             return;
 
         const overflow = this.collection.length - this.maxItems;

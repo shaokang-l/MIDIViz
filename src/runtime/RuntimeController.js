@@ -162,7 +162,7 @@ class RuntimeController {
             return 600;
         if (primitiveType === "LineSet")
             return 800;
-        return 1200;
+        return 4000;
     }
 
     createColorGenerator(primitiveNode) {
