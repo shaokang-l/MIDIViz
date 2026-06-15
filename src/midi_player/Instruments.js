@@ -14,7 +14,9 @@ var INSTRUMENTS = {
     "xylophone": "xylophone",
     "music_box": "music_box",
     "electric_piano": "electric_piano_1",
-    "jazz_guitar": "electric_guitar_jazz"
+    "jazz_guitar": "electric_guitar_jazz",
+    "koto":"koto",
+    "shakuhachi":"shakuhachi",
 };
 
 //all available instruments

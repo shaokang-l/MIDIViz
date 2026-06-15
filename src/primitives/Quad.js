@@ -17,6 +17,13 @@ class Quad extends Primitive {
         p5.fill(this.color);
         p5.rect(this.position.x, this.position.y, this.sizeX, this.sizeY);
     }
+
+        //override the bounary function, the actual draw position is different from the position of the particle
+    checkBoundary(p5) {
+        if (this.position.x < 0 || this.position.x > p5.windowWidth || this.position.y < -1000 || this.position.y > p5.windowHeight)
+            return true;
+        return false;
+    }
 };
 
 export default Quad;

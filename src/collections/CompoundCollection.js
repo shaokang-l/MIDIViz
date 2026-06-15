@@ -20,6 +20,8 @@ class CompoundCollection {
      */
     removeCollection(idx) {
         console.assert(idx < this.collections.length && idx >= 0, { msg: "Invalid collection index" });
+        if (this.collections[idx].disposeEventListeners)
+            this.collections[idx].disposeEventListeners();
         this.collections.splice(idx, 1);
     }
 
@@ -83,6 +85,8 @@ class CompoundCollection {
 
     clearAll() {
         this.collections.forEach(collection => {
+            if (collection.disposeEventListeners)
+                collection.disposeEventListeners();
             collection.clear();
         });
     }

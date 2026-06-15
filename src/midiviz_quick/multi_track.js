@@ -18,17 +18,19 @@ new p5(function (p5) {
     //set up the play settings and particle speed
     p5.setup = async function () {
         p5.createCanvas(p5.windowWidth, p5.windowHeight);
-        const url = "../../assets/alleycat.mid"
+        const url = "../../assets/itohakanashi.mid"
         await player.load(url);
         //set play settings
-        player.setSustain(0.1, 0);
-        player.setSustain(0.1, 1);
-        player.setReverb(0.5, 1);
+        player.setAllSustain(0.6);
+        player.setSustain(0, 6);
+        player.setAllReverb(0.5);
 
         //set instrument type
-        player.setInstrument("electric_piano", 0);
-        player.setInstrument("oboe", 1);
-        player.setInstrument("bass", 2);
+        player.setInstrument("piano", 0);
+        player.setInstrument("piano", 1);
+        player.setInstrument("xylophone", 2);
+        player.setInstrument("xylophone", 5);
+        player.setInstrument("flute", 6);
         await player.play();
 
         //set global visualization unit moving speed
@@ -36,25 +38,34 @@ new p5(function (p5) {
         viz.setSpeedScale(5e-2);
 
         //add primitives, and they listen to different tracks
-        viz.addCollection(new ParticleSet(0, 5e-2, false, (detail) => { return [69, 202, 255] }));
-        viz.addCollection(new QuadSet(1, 5e-2, false, (detail) => { return [255, 27, 107] }));
-        viz.addCollection(new ParticleSet(2, 5e-2, false, (detail) => { return [255, 147, 15] }));
+        viz.addCollection(new QuadSet(0, 5e-2, false, (detail) => { return [69, 202, 255] }));
         viz.addCollection(new RippleSet(0, 5e-2, false, (detail) => { return [69, 202, 255] }));
-        viz.addCollection(new Histogram(viz.getKeys(), 0, 5e-2, true));
+
+        viz.addCollection(new QuadSet(1, 5e-2, false, (detail) => { return [69, 202, 255] }));
+
+        viz.addCollection(new QuadSet(2, 8e-2, false, (detail) => { return [255, 147, 15] }));
+        viz.addCollection(new ParticleSet(5, 8e-2, false, (detail) => { return [255, 147, 15] }));
+
+        viz.addCollection(new QuadSet(3, 5e-2, false, (detail) => { return [69, 202, 255] }));
+        viz.addCollection(new QuadSet(4, 5e-2, false, (detail) => { return [69, 202, 255] }));
+
+        viz.addCollection(new CircularParticleSet(150, 6 , 5e-3, false, (detail) => { return [255, 27, 107] }));
+
 
         //piano color settings, each track has a different color
         viz.setColorGenerator(0, (detail) => {
-            if (detail.trackNum == 0)
-                return [69, 202, 255];
-            else if (detail.trackNum == 1)
-                return [255, 27, 107];
-            else if (detail.trackNum == 2)
-                return [255, 147, 15];
+            switch(player.getInstrument(detail.trackNum))
+            {   
+                case "acoustic_grand_piano":
+                    return [69, 202, 255];
+                case "xylophone":
+                    return [255, 147, 15];
+                default:
+                    return [255, 27, 107];
+            }
+
         });
 
-        viz.setOnNotePlayed(0,(detail)=>{
-            
-        })
 
     }
 

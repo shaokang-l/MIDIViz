@@ -1,6 +1,6 @@
 import { Reverb, SplendidGrandPiano, Soundfont } from "https://unpkg.com/smplr/dist/index.mjs"; // needs to be a url
 import FileHandler from "./FileHandler.js";
-import { INSTRUMENTS } from "./Instruments.js";
+import { INSTRUMENTS, SOUNDFONT_INSTRUMENTS } from "./Instruments.js";
 
 var constraints = { audio: true }
 
@@ -12,6 +12,8 @@ class NotePlayer {
     constructor() {
         this.tracks = [];
         this.trackSettings = [];
+        this.currentContext = null;
+        this.playbackToken = 0;
     };
 
     /**
@@ -64,14 +66,22 @@ class NotePlayer {
     }
 
     /**
+     * @description Get instrument type of a certain track
+     */
+    getInstrument(idx = 0) {
+        //assert idx is valid
+        console.assert(idx >= 0 && idx < this.trackSettings.length, { msg: "index out of bound" });
+        //assert instrument is valid
+        return this.trackSettings[idx].instrument;
+    }
+
+    /**
      * @description Set instrument type of a certain track
      */
     setInstrument(instr, idx = 0) {
         //assert idx is valid
         console.assert(idx >= 0 && idx < this.trackSettings.length, { msg: "index out of bound" });
-        //assert instrument is valid
-        console.assert(INSTRUMENTS.hasOwnProperty(instr.toLowerCase()), { msg: "invalid instrument" });
-        this.trackSettings[idx].instrument = INSTRUMENTS[instr.toLowerCase()];
+        this.trackSettings[idx].instrument = this.resolveInstrumentName(instr);
     }
 
     /**
@@ -124,21 +134,86 @@ class NotePlayer {
         const handler = new FileHandler();
         await handler.loadMidi(url).then(() => {
             this.tracks = handler.convertAllToCustomNotes();
-            this.tracks.forEach(track => {
-                //load the track settings
-                //each track has an instrument and reverb settings
-                this.trackSettings.push({ instrument: INSTRUMENTS.hasOwnProperty(track.instrument.toLowerCase()) ? INSTRUMENTS[track.instrument.toLowerCase()] : "acoustic_grand_piano", reverb: 0.3, sustain: 0, shift: 0, minPitch: 127, maxPitch: 0 });
-                this.calcAllMinMaxPitch();
-            });
+            this.initializeTrackSettings();
         });
 
     };
+
+    async loadFile(file) {
+        const handler = new FileHandler();
+        await handler.loadMidiFile(file);
+        this.tracks = handler.convertAllToCustomNotes();
+        this.initializeTrackSettings();
+    }
+
+    initializeTrackSettings() {
+        this.stop();
+        this.trackSettings = [];
+        this.tracks.forEach(track => {
+            const resolvedInstrument = this.resolveInstrumentName(track.instrument);
+            track.resolvedInstrument = resolvedInstrument;
+            //load the track settings
+            //each track has an instrument and reverb settings
+            this.trackSettings.push({
+                instrument: resolvedInstrument,
+                reverb: 0.3,
+                sustain: 0,
+                shift: 0,
+                delay: 0,
+                velocityScale: 1,
+                minPitch: 127,
+                maxPitch: 0,
+            });
+        });
+        this.calcAllMinMaxPitch();
+    }
+
+    normalizeInstrumentName(instr) {
+        return String(instr || "")
+            .trim()
+            .toLowerCase()
+            .replace(/\s+/g, "_")
+            .replace(/-/g, "_");
+    }
+
+    resolveInstrumentName(instr) {
+        const key = this.normalizeInstrumentName(instr);
+        if (INSTRUMENTS[key])
+            return INSTRUMENTS[key];
+        if (SOUNDFONT_INSTRUMENTS.includes(key))
+            return key;
+
+        const simpleKey = key.replace(/^acoustic_/, "");
+        if (INSTRUMENTS[simpleKey])
+            return INSTRUMENTS[simpleKey];
+
+        return "acoustic_grand_piano";
+    }
+
+    getDuration() {
+        let duration = 0;
+        this.tracks.forEach(track => {
+            track.notes.forEach(note => {
+                duration = Math.max(duration, note.time + note.duration);
+            });
+        });
+        return duration;
+    }
+
+    stop() {
+        this.playbackToken++;
+        if (!this.currentContext)
+            return;
+
+        this.currentContext.close();
+        this.currentContext = null;
+    }
 
 
     /**
      * @description  Play the song (all tracks). By default with piano
      */
-    defaultPlay() {
+    defaultPlay(timeOffset = 0) {
         //Resume Audio Context
         navigator.mediaDevices.getUserMedia(constraints)
             .then((stream) => {
@@ -154,17 +229,18 @@ class NotePlayer {
                     for (let i = 0; i < this.tracks.length; i++) {
                         this.tracks[i].notes.forEach(note => {
                             var playNote = note.midi + this.trackSettings[i].shift;
+                            const duration = note.duration + this.trackSettings[i].sustain;
                             piano.start({
-                                note: playNote, velocity: note.velocity, duration: note.duration + this.trackSettings[i].sustain, time: note.time + now,
+                                note: playNote, velocity: note.velocity, duration: duration, time: note.time + now,
                                 onStart: () => {
-                                    note.midi = playNote;
-                                    var e = new CustomEvent("notePlayed", { bubbles: true, detail: { note: note, trackNum: i } });
+                                    const playedNote = { ...note, midi: playNote, duration: duration };
+                                    var e = new CustomEvent("notePlayed", { bubbles: true, detail: { note: playedNote, trackNum: i } });
                                     document.dispatchEvent(e);
-                                }, onEnded: () => {
-                                    note.midi = playNote;
-                                    var e = new CustomEvent("noteEnded", { bubbles: true, detail: { note: note, trackNum: i } });
-                                    document.dispatchEvent(e);
-                                }
+                                    window.setTimeout(() => {
+                                        var ended = new CustomEvent("noteEnded", { bubbles: true, detail: { note: playedNote, trackNum: i } });
+                                        document.dispatchEvent(ended);
+                                    }, duration * 1000);
+                                }, onEnded: () => {}
                             });
                         });
                     }
@@ -176,29 +252,46 @@ class NotePlayer {
     /**
      * @description  Play the song (all tracks) with specified track settings
      */
-    async play() {
+    async play(timeOffset = 0) {
+        this.stop();
 
         const context = new AudioContext(); // create the audio context
         const now = context.currentTime;
         const reverb = new Reverb(context);
+        const playbackToken = this.playbackToken;
+        this.currentContext = context;
 
         for (let i = 0; i < this.tracks.length; i++) {
             const instr = await new Soundfont(context, { instrument: this.trackSettings[i].instrument }).load;
+            if (playbackToken !== this.playbackToken)
+                return;
+
             instr.output.addEffect("reverb", reverb, this.trackSettings[i].reverb);
 
             this.tracks[i].notes.forEach(note => {
-                var playNote = note.midi + this.trackSettings[i].shift;
+                const trackSetting = this.trackSettings[i];
+                const noteStart = note.time + (trackSetting.delay || 0);
+                const elapsedNoteTime = Math.max(0, timeOffset - noteStart);
+                const duration = note.duration + trackSetting.sustain - elapsedNoteTime;
+                if (duration <= 0)
+                    return;
+
+                const scheduledTime = Math.max(0, noteStart - timeOffset);
+                const velocity = Math.max(0, Math.min(127, note.velocity * (trackSetting.velocityScale || 1)));
+                var playNote = note.midi + trackSetting.shift;
                 instr.start({
-                    note: playNote, velocity: note.velocity, duration: note.duration + this.trackSettings[i].sustain, time: note.time + now,
+                    note: playNote, velocity: velocity, duration: duration, time: scheduledTime + now,
                     onStart: () => {
-                        note.midi = playNote;
-                        var e = new CustomEvent("notePlayed", { bubbles: true, detail: { note: note, trackNum: i } });
+                        const playedNote = { ...note, midi: playNote, duration: duration };
+                        var e = new CustomEvent("notePlayed", { bubbles: true, detail: { note: playedNote, trackNum: i, timeOffset: timeOffset } });
                         document.dispatchEvent(e);
-                    }, onEnded: () => {
-                        note.midi = playNote;
-                        var e = new CustomEvent("noteEnded", { bubbles: true, detail: { note: note, trackNum: i } });
-                        document.dispatchEvent(e);
-                    }
+                        window.setTimeout(() => {
+                            if (playbackToken !== this.playbackToken)
+                                return;
+                            var ended = new CustomEvent("noteEnded", { bubbles: true, detail: { note: playedNote, trackNum: i, timeOffset: timeOffset } });
+                            document.dispatchEvent(ended);
+                        }, duration * 1000);
+                    }, onEnded: () => {}
                 });
             });
         }

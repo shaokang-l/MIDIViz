@@ -23,6 +23,7 @@ class Collection {
     @description The track index this collection listens to. Each colleciton is associated with one track by default.
     */
     trackIdx;
+    trackIndices;
 
     /** 
     @description The initial acceleration of the collection is multiplied by this amount
@@ -34,9 +35,17 @@ class Collection {
     */
     colorGenerator;
 
+    notePlayedListener;
+    noteEndedListener;
+
     
     setTrackIdx(trackIdx) {
         this.trackIdx = trackIdx;
+        this.trackIndices = null;
+    }
+
+    setTrackIndices(trackIndices) {
+        this.trackIndices = Array.isArray(trackIndices) ? trackIndices : null;
     }
 
     setSpeedScale(speed_scale) {
@@ -71,6 +80,9 @@ class Collection {
 
         this.listenToAll = listenToAll;
         this.colorGenerator = colorGenerator;
+        this.notePlayedListener = null;
+        this.noteEndedListener = null;
+        this.trackIndices = null;
     }
 
     /**
@@ -173,18 +185,16 @@ class Collection {
      * This decides how the collection will react to the notes.
      */
     setOnNotePlayed(callback) {
-        //remove previous event listener
-        document.removeEventListener("notePlayed", (e) => {
-            if (e.detail.trackNum === this.trackIdx || this.listenToAll)
-                this.onNotePlayed(e.detail);
-        });
+        if (this.notePlayedListener)
+            document.removeEventListener("notePlayed", this.notePlayedListener);
 
         this.onNotePlayed = callback;
         //only handle the event when the trackIdx matches or listenToAll is true
-        document.addEventListener("notePlayed", (e) => {
-            if (e.detail.trackNum === this.trackIdx || this.listenToAll)
+        this.notePlayedListener = (e) => {
+            if (this.shouldHandleTrack(e.detail.trackNum))
                 this.onNotePlayed(e.detail);
-        });
+        };
+        document.addEventListener("notePlayed", this.notePlayedListener);
     }
 
     /**
@@ -192,18 +202,37 @@ class Collection {
      * This decides how the collection will react to the notes.
      */
     setOnNoteEnded(callback) {
-        //remove previous event listener
-        document.removeEventListener("notePlayed", (e) => {
-            if (e.detail.trackNum === this.trackIdx || this.listenToAll)
-                this.onNoteEnded(e.detail);
-        });
+        if (this.noteEndedListener)
+            document.removeEventListener("noteEnded", this.noteEndedListener);
 
         this.onNoteEnded = callback;
         //only handle the event when the trackIdx matches or listenToAll is true
-        document.addEventListener("noteEnded", (e) => {
-            if (e.detail.trackNum === this.trackIdx || this.listenToAll)
+        this.noteEndedListener = (e) => {
+            if (this.shouldHandleTrack(e.detail.trackNum))
                 this.onNoteEnded(e.detail);
-        });
+        };
+        document.addEventListener("noteEnded", this.noteEndedListener);
+    }
+
+    shouldHandleTrack(trackNum) {
+        if (this.listenToAll)
+            return true;
+        if (Array.isArray(this.trackIndices))
+            return this.trackIndices.includes(trackNum);
+        return trackNum === this.trackIdx;
+    }
+
+    /**
+     * @description Remove DOM event listeners owned by this collection.
+     */
+    disposeEventListeners() {
+        if (this.notePlayedListener)
+            document.removeEventListener("notePlayed", this.notePlayedListener);
+        if (this.noteEndedListener)
+            document.removeEventListener("noteEnded", this.noteEndedListener);
+
+        this.notePlayedListener = null;
+        this.noteEndedListener = null;
     }
 
     /**

@@ -25,7 +25,7 @@ class ParticleSet extends Collection {
         let pitch = detail.note.midi;
         let pos = new vec2(pitch / 127 * 1920, 0);
         for (let i = 0; i < 10; i++) {
-            this.add(pos, new vec2(0, Math.random()).add(vec2.random2D().scalar_mul(0.15)), 10, this.colorGenerator(detail));
+            this.add(pos, new vec2(0, Math.random()).add(vec2.random2D().scalar_mul(0.05)), 10, this.colorGenerator(detail));
         }
     };
 
@@ -41,7 +41,7 @@ class ParticleSet extends Collection {
         //generate 10 particles on each note played, the particles are generated at the key position, 
         //with a up vector perturbed by a random vector
         for (let i = 0; i < 10; i++) {
-            this.add(pos, new vec2(0, -1*Math.random()).add(vec2.random2D().scalar_mul(0.15)), 10, this.colorGenerator(detail));
+            this.add(pos, new vec2(0, -2*Math.random()).add(vec2.random2D().scalar_mul(0.02)), 10, this.colorGenerator(detail));
         }
     };
 

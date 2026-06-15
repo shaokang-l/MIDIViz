@@ -16,6 +16,9 @@ class PianoRollWithPrimitives extends CompoundCollection {
     background = [255, 255, 255];
     onNotePlayed = (detail) => { };
     onNoteEnded = (detail) => { };
+    globalNotePlayedListener = null;
+    globalNoteEndedListener = null;
+    pianoRollVisible = true;
 
     /** 
     @description Initialize a PianoRoll with primitives, initType stands for the first primitive comes along with the piano roll
@@ -23,6 +26,7 @@ class PianoRollWithPrimitives extends CompoundCollection {
     constructor(p5, initType = null, darkMode = false, colorGenerator = (detail) => { return [Math.random() * 55 + 200, Math.random() * 55 + 200, Math.random() * 55 + 200] }) {
         super();
         this.darkMode = darkMode;
+        this.pianoRollVisible = true;
         this.collections.push(new PianoRoll(p5, 100, [0, 0, 0], [255, 255, 255], darkMode, colorGenerator));
         if(darkMode)
             this.setBackgroundColor([0,0,0]);
@@ -52,6 +56,8 @@ class PianoRollWithPrimitives extends CompoundCollection {
 
         this.onNotePlayed = (detail) => {};
         this.onNoteEnded = (detail) => {};
+        this.globalNotePlayedListener = null;
+        this.globalNoteEndedListener = null;
     }
 
     setBackgroundColor(color) {
@@ -116,6 +122,10 @@ class PianoRollWithPrimitives extends CompoundCollection {
         this.collections[0].setHeight(height);
     }
 
+    setPianoRollVisible(visible) {
+        this.pianoRollVisible = visible;
+    }
+
     setKeyColor_1(color) {
         this.collections[0].setColor_1(color);
     }
@@ -135,7 +145,8 @@ class PianoRollWithPrimitives extends CompoundCollection {
             collection.draw(p5);
         })
 
-        pianoroll.step(p5);
+        if (this.pianoRollVisible)
+            pianoroll.step(p5);
     }
 
     /**
@@ -143,14 +154,14 @@ class PianoRollWithPrimitives extends CompoundCollection {
         set callback for changing other global variables, only one event listener can be set at a time
      */
     setGlobalOnNotePlayed(callback) {
-        //remove the old event listener
-        document.removeEventListener("notePlayed", (e) => {
-            this.onNotePlayed(e.detail);
-        });
+        if (this.globalNotePlayedListener)
+            document.removeEventListener("notePlayed", this.globalNotePlayedListener);
+
         this.onNotePlayed = callback;
-        document.addEventListener("notePlayed", (e) => {
+        this.globalNotePlayedListener = (e) => {
             this.onNotePlayed(e.detail);
-        });
+        };
+        document.addEventListener("notePlayed", this.globalNotePlayedListener);
     }
 
     /**
@@ -158,14 +169,14 @@ class PianoRollWithPrimitives extends CompoundCollection {
         set callback for changing other global variables, only one event listener can be set at a time
      */
     setGlobalOnNoteEnded(callback) {
-        //remove the old event listener
-        document.removeEventListener("noteEnded", (e) => {
-            this.onNoteEnded(e.detail);
-        });
+        if (this.globalNoteEndedListener)
+            document.removeEventListener("noteEnded", this.globalNoteEndedListener);
+
         this.onNoteEnded = callback;
-        document.addEventListener("noteEnded", (e) => {
+        this.globalNoteEndedListener = (e) => {
             this.onNoteEnded(e.detail);
-        });
+        };
+        document.addEventListener("noteEnded", this.globalNoteEndedListener);
     }
 
 };

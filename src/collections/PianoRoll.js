@@ -32,12 +32,15 @@ class PianoRoll extends Collection {
 
     //dark mode
     darkMode;
+    activeHighlights;
 
     constructor(p5, height = 100, color_1 = [255, 255, 255], color_2 = [0, 0, 0], darkMode = false, colorGenerator = (detail) => { return [Math.random() * 55 + 200, Math.random() * 55 + 200, Math.random() * 55 + 200] }) {
         super(0, 0, true, colorGenerator);
+        this.p5 = p5;
         this.height = height;
         this.color_1 = color_1;
         this.color_2 = color_2;
+        this.activeHighlights = {};
         this.initCollection(p5);
         this.setOnNoteEnded(this.defaultOnNoteEnded);
         this.setOnNotePlayed(this.defaultOnNotePlayed);
@@ -60,12 +63,25 @@ class PianoRoll extends Collection {
         this.recolor();
     }
 
+    refreshLayout(p5 = this.p5) {
+        if (!p5)
+            return;
+
+        this.collection = [];
+        this.activeHighlights = {};
+        this.initCollection(p5);
+        let temp = structuredClone(this.collection);
+        temp.sort((a, b) => a.pitch - b.pitch);
+        this.sorted = temp;
+        this.recolor();
+    }
+
     /** 
     @description The corresponding note will have the color spceified by the colorGenerator
     */
     defaultOnNotePlayed = (detail) => {
         let pitch = detail.note.midi;
-        this.setNoteColor(pitch, this.colorGenerator(detail));
+        this.activeHighlights[pitch] = this.colorGenerator(detail);
     }
 
     /** 
@@ -73,12 +89,11 @@ class PianoRoll extends Collection {
     */
     defaultOnNoteEnded = (detail) => {
         let pitch = detail.note.midi;
-        if (this.getNoteByPitch(pitch).isWhiteKey) {
-            this.setNoteColor(pitch, this.color_1);
-        }
-        else {
-            this.setNoteColor(pitch, this.color_2);
-        }
+        const key = this.getNoteByPitch(pitch);
+        if (!key)
+            return;
+
+        delete this.activeHighlights[pitch];
     };
 
     //these methods are not allowed
@@ -95,15 +110,35 @@ class PianoRoll extends Collection {
     checkBoundary() { }; //do nothing
 
     draw(p5) {
-        //draw the keys
-        if (this.darkMode) {
-            p5.stroke(255);
-        }
-        else {
-            p5.stroke(0);
-        }
+        p5.strokeWeight(1);
 
-        this.collection.forEach(item => item.draw(p5));
+        // Draw white keys first, then black keys on top with explicit outlines.
+        this.collection.filter(item => item.isWhiteKey).forEach(item => {
+            p5.stroke(this.darkMode ? 180 : 35);
+            item.draw(p5);
+        });
+
+        this.collection.filter(item => !item.isWhiteKey).forEach(item => {
+            p5.stroke(this.darkMode ? 235 : 210);
+            item.draw(p5);
+        });
+
+        p5.noStroke();
+        Object.entries(this.activeHighlights).forEach(([pitch, color]) => {
+            const key = this.getNoteByPitch(Number(pitch));
+            if (!key)
+                return;
+
+            const width = this.getUniformHighlightWidth();
+            const x = key.position.x + (key.sizeX - width) / 2;
+            p5.fill(color);
+            p5.rect(x, key.position.y, width, key.sizeY);
+        });
+    }
+
+    getUniformHighlightWidth() {
+        const blackKey = this.collection.find(key => !key.isWhiteKey);
+        return blackKey ? blackKey.sizeX : 12.5;
     }
 
     /** 
@@ -186,6 +221,7 @@ class PianoRoll extends Collection {
 
     setHeight(height) {
         this.height = height;
+        this.refreshLayout();
     }
 
     setColor_1(color_1) {

@@ -1,0 +1,67 @@
+{
+  "version": 1,
+  "nodes": [
+    {
+      "id": "pianoRoll-1",
+      "type": "pianoRoll",
+      "label": "Piano Roll",
+      "position": { "x": 24, "y": 32 },
+      "params": {
+        "enable": true,
+        "height": 100,
+        "whiteKeyColor": [255, 255, 255],
+        "blackKeyColor": [0, 0, 0],
+        "highlightColor": [69, 202, 255],
+        "highlightMode": "track"
+      }
+    },
+    {
+      "id": "track-2",
+      "type": "track",
+      "label": "Track 0",
+      "position": { "x": 24, "y": 452 },
+      "params": {
+        "trackIndex": 0,
+        "noteCount": 0
+      }
+    },
+    {
+      "id": "instrument-3",
+      "type": "instrument",
+      "label": "piano",
+      "position": { "x": 300, "y": 452 },
+      "params": {
+        "instrument": "piano",
+        "delay": 0,
+        "sustain": 0,
+        "reverb": 0.3,
+        "shift": 0,
+        "velocityScale": 1
+      }
+    },
+    {
+      "id": "primitive-4",
+      "type": "primitive",
+      "label": "QuadSet",
+      "position": { "x": 600, "y": 452 },
+      "params": {
+        "primitiveType": "QuadSet",
+        "speedScale": 0.05,
+        "listenToAll": false,
+        "color": [69, 202, 255]
+      }
+    }
+  ],
+  "connections": [
+    {
+      "id": "connection-6",
+      "from": { "nodeId": "track-2", "port": "midi" },
+      "to": { "nodeId": "instrument-3", "port": "audio" }
+    },
+    {
+      "id": "connection-8",
+      "from": { "nodeId": "instrument-3", "port": "audio" },
+      "to": { "nodeId": "primitive-4", "port": "viz" }
+    }
+  ]
+}

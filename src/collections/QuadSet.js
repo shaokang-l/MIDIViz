@@ -32,7 +32,7 @@ class QuadSet extends Collection {
         let pitch = detail.note.midi;
         let duration = detail.note.duration;
         let pos = new vec2(pitch / 127 * 1920, 0);
-        this.add(pos, new vec2(0, 1), 12.5, 80 * duration, this.colorGenerator(detail));
+        this.add(pos, new vec2(0, 1), 12.5, this.getDurationHeight(duration), this.colorGenerator(detail));
     };
 
     /**
@@ -44,9 +44,25 @@ class QuadSet extends Collection {
 
         let pitch = detail.note.midi;
         let duration = detail.note.duration;
-        let pos = keys.getNoteByPitch(pitch).position;
-        this.add(pos, new vec2(0, -1), 12.5, 80 * duration, this.colorGenerator(detail));
+        const key = keys.getNoteByPitch(pitch);
+        if (!key)
+            return;
+
+        const width = this.getUniformKeyWidth(keys);
+        const pos = new vec2(key.position.x + (key.sizeX - width) / 2, key.position.y);
+        this.add(pos, new vec2(0, -1), width, this.getDurationHeight(duration), this.colorGenerator(detail));
     };
+
+    getUniformKeyWidth(keys) {
+        const blackKey = keys.collection.find(key => !key.isWhiteKey);
+        return blackKey ? blackKey.sizeX : 12.5;
+    }
+
+    getDurationHeight(duration, fps = 60) {
+        const frames = Math.max(1, duration * fps);
+        const acceleration = Math.abs(this.speed_scale);
+        return Math.max(6, acceleration * frames * (frames + 1) / 2);
+    }
 
 };
 
